@@ -29,7 +29,7 @@ test:
 check: verify test
 
 run:
-	BRIDGE_HOST=$(BRIDGE_HOST) BRIDGE_PORT=$(BRIDGE_PORT) $(BIN)/uvicorn server:app --host $(BRIDGE_HOST) --port $(BRIDGE_PORT)
+	BRIDGE_HOST=$(BRIDGE_HOST) BRIDGE_PORT=$(BRIDGE_PORT) $(BIN)/python -m uvicorn server:app --host $(BRIDGE_HOST) --port $(BRIDGE_PORT)
 
 clean:
 	rm -rf $(VENV) __pycache__ *.egg-info

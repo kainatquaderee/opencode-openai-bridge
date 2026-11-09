@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
-# opencode-openai-bridge v0.6.0 — launcher
+# opencode-openai-bridge v0.7.0 - launcher
 # =============================================================================
 # Verifies deps, files, and imports, then starts uvicorn.
 #
 # Usage:
 #   ./start.sh              # full auto: install deps if needed, verify, run
-#   ./start.sh --check      # verify + test only, don't start the server
+#   ./start.sh --check      # verify + smoke test only, do not start the server
 #   ./start.sh --reinstall  # wipe .venv and reinstall before verify
-#   ./start.sh --help       # show this help block
+#   ./start.sh --help       # show this help
 #
 # Environment (see .env.example for the full list):
 #   BRIDGE_HOST     bind host   (default 0.0.0.0)
@@ -18,43 +18,47 @@
 # Notes:
 #   - This script never reads the generic $PORT env var, so a stray
 #     PORT=20128 exported by OmniRoute cannot hijack the bind port.
-#   - A .env file in this directory is loaded first; values already set
-#     in the shell take precedence over .env.
+#   - A .env file in this directory is loaded first; values already set in the
+#     shell take precedence over .env.
 #   - Deps are reinstalled only when requirements.txt changes (hash-tracked).
 # =============================================================================
 
 set -euo pipefail
 
-# --- Anchor to script directory ---
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
-SCRIPT_LINES=$(wc -l < "$0" | tr -d ' ')
-echo "==> start.sh v0.6.0 (${SCRIPT_LINES} lines)"
 
-# --- Arg parsing ---
+VERSION="0.7.0"
+echo "==> start.sh v${VERSION}"
+
+usage() {
+    sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'
+}
+
 MODE="run"
+REINSTALL=0
 for arg in "$@"; do
     case "$arg" in
         --check)     MODE="check" ;;
-        --reinstall) rm -rf .venv; echo "==> removed .venv (reinstall)" ;;
-        -h|--help)
-            sed -n '2,24p' "$0"
-            exit 0
-            ;;
-        *) echo "unknown argument: $arg" >&2; exit 2 ;;
+        --reinstall) REINSTALL=1 ;;
+        -h|--help)   usage; exit 0 ;;
+        *) echo "unknown argument: $arg (try --help)" >&2; exit 2 ;;
     esac
 done
+
+if [ "$REINSTALL" = "1" ]; then
+    rm -rf .venv
+    echo "==> removed .venv (reinstall)"
+fi
 echo "==> mode: $MODE"
 
 # --- Optional .env loading (shell env wins over .env) ---
 if [ -f .env ]; then
     echo "==> loading .env"
     while IFS='=' read -r key val || [ -n "$key" ]; do
-        # strip whitespace from key
         key=$(printf '%s' "$key" | tr -d ' \t\r')
         [ -z "$key" ] && continue
         case "$key" in \#*) continue ;; esac
-        # strip surrounding quotes and trailing whitespace from value
         val=$(printf '%s' "$val" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
                                         -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
         if [ -z "${!key+x}" ]; then
@@ -96,8 +100,8 @@ PREV_HASH=""
 
 if [ "$PREV_HASH" != "$REQ_HASH" ]; then
     echo "==> installing deps (hash changed)"
-    pip install -q --upgrade pip
-    pip install -q -r requirements.txt
+    python -m pip install -q --upgrade pip
+    python -m pip install -q -r requirements.txt
     printf '%s' "$REQ_HASH" > .venv/.deps-hash
 else
     echo "==> deps up to date"
@@ -117,7 +121,7 @@ if [ "$MODE" = "check" ]; then
     exit 0
 fi
 
-# --- Bind host/port (BRIDGE_* namespaced; never inherit generic PORT) ---
+# --- Bind host/port (BRIDGE_* only; never inherit generic PORT) ---
 BIND_HOST="${BRIDGE_HOST:-0.0.0.0}"
 BIND_PORT="${BRIDGE_PORT:-4097}"
 
@@ -126,8 +130,9 @@ if [ -n "${PORT:-}" ] && [ "${PORT}" != "$BIND_PORT" ]; then
 fi
 
 # --- Optional: verify opencode binary ---
-if command -v "${BRIDGE_OPENCODE_BIN:-opencode}" >/dev/null 2>&1; then
-    echo "==> opencode: $(command -v "${BRIDGE_OPENCODE_BIN:-opencode}")"
+OPENCODE_BIN="${BRIDGE_OPENCODE_BIN:-opencode}"
+if command -v "$OPENCODE_BIN" >/dev/null 2>&1; then
+    echo "==> opencode: $(command -v "$OPENCODE_BIN")"
 else
     echo "WARN: opencode not on PATH. Bridge will start but /v1/chat/completions returns 503." >&2
 fi
@@ -135,6 +140,6 @@ fi
 echo
 echo "==> starting server on ${BIND_HOST}:${BIND_PORT}"
 echo "    OmniRoute base URL: http://localhost:${BIND_PORT}/v1"
-echo "    Quick check:        curl -s http://localhost:${BIND_PORT}/v1/models | jq"
+echo "    Quick check:        curl -s http://localhost:${BIND_PORT}/health"
 echo
-exec uvicorn server:app --host "$BIND_HOST" --port "$BIND_PORT"
+exec python -m uvicorn server:app --host "$BIND_HOST" --port "$BIND_PORT"

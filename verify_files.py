@@ -8,7 +8,7 @@ Distinguishes:
     TINY    -- file has 1-10 bytes (warning, not failure; e.g. .python-version)
     OK      -- file has content
 
-v0.6.0: no `unlimited/` entries. Bridge-only distribution.
+v0.7.0: no `unlimited/` entries. Bridge-only distribution.
 """
 
 import sys

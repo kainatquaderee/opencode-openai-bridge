@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+
+# Venvs
+.venv/
+venv/
+
+# Env files — keep the example, ignore everything else
+.env
+.env.*
+!.env.example
+
+# Logs and state
+*.log
+.deps-hash
+
+# Editors and OS junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.bak
+*.tmp
+*.orig
+
+# Test caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
